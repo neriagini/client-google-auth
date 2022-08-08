@@ -1,24 +1,94 @@
-import logo from './logo.svg';
-import './App.css';
+import React, { useState, useEffect } from "react";
+import { getMyGoogleCalendarsList, getMyPrimaryEvents } from "./calendarApi";
+import {events} from "./event";
 
 function App() {
+  useEffect(() => {
+    handleTokenFromQueryParams();
+  }, []);
+
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  const createGoogleAuthLink = async () => {
+    try {
+      const request = await fetch("http://localhost:8080/createAuthLink", {
+        method: "POST",
+      });
+      const response = await request.json();
+      window.location.href = response.url;
+    } catch (error) {
+      console.log("App.js 12 | error", error);
+      throw new Error("Issue with Login", error.message);
+    }
+  };
+
+  const handleTokenFromQueryParams = () => {
+    const query = new URLSearchParams(window.location.search);
+    const accessToken = query.get("accessToken");
+    const refreshToken = query.get("refreshToken");
+    const expirationDate = newExpirationDate();
+    console.log("App.js 30 | expiration Date", expirationDate);
+    if (accessToken && refreshToken) {
+      storeTokenData(accessToken, refreshToken, expirationDate);
+      setIsLoggedIn(true);
+    }
+  };
+
+  const newExpirationDate = () => {
+    let expiration = new Date();
+    expiration.setHours(expiration.getHours() + 1);
+    return expiration;
+  };
+
+  const storeTokenData = async (token, refreshToken, expirationDate) => {
+    sessionStorage.setItem("accessToken", token);
+    sessionStorage.setItem("refreshToken", refreshToken);
+    sessionStorage.setItem("expirationDate", expirationDate);
+  };
+
+  const signOut = () => {
+    setIsLoggedIn(false);
+    sessionStorage.clear();
+  };
+
+  const colors = ['#cee9e7', '#ffefe7', '#f8d0cd', '#f0def0', '#cfe4f5', '#e5eaec']
+
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
+      <div className={`flex flex-col justify-center`}>
+        <p className={`font-bold text-[20px] text-center`}>Google</p>
+        {!isLoggedIn ? (
+            <button onClick={createGoogleAuthLink}>Login</button>
+        ) : (
+            <>
+            <div className={`mx-auto space-x-1`}>
+              <button className={`rounded-3xl border-2 p-2 bg-blue-500 text-white`} onClick={getMyGoogleCalendarsList}>
+                Get Google Calendars
+              </button>
+              <button  className={`rounded-3xl border-2 p-2 bg-blue-500 text-white`} onClick={getMyPrimaryEvents}>
+                Get Primary Events
+              </button>
+              <button className={`rounded-3xl border-2 p-2 bg-blue-500 text-white`} onClick={signOut}>Sign Out</button>
+            </div>
+            </>
+        )}
+
+        <div className={`ml-40`}>
+          {
+            events.map((event, index) => {
+              return(
+                  <div key={index} className={`${'bg-['+colors[index]+']'}  rounded-r-[5px] w-[200px] p-2 m-5`}>
+                    {
+                      event.summary && <p className={`font-bold`}> {event.summary} </p>
+                    }
+                    {
+                      event.description && <p> {event.description} </p>
+                    }
+                  </div>
+              )
+            })
+          }
+        </div>
+      </div>
   );
 }
 
